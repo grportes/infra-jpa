@@ -4,7 +4,9 @@ organization := "br.com.infra"
 
 version := "1.0-SNAPSHOT"
 
-lazy val root = (project in file(".")).enablePlugins(PlayJava)
+lazy val root = (project in file("."))
+  .enablePlugins(PlayJava)
+  .disablePlugins(PlayLogback)
 
 scalaVersion := "2.12.6"
 
