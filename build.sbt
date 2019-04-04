@@ -2,7 +2,7 @@ name := """infra-jpa"""
 
 organization := "br.com.infra"
 
-version := "1.0-SNAPSHOT"
+version := "1.1-SNAPSHOT"
 
 lazy val root = (project in file("."))
   .enablePlugins(PlayJava)
@@ -17,7 +17,7 @@ libraryDependencies += javaJpa
 libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.23.1"
 libraryDependencies += "org.hibernate" % "hibernate-entitymanager" % "5.1.0.Final"
 libraryDependencies += "com.zsoltfabok" % "sqlite-dialect" % "1.0"
-libraryDependencies += "br.com.infra" % "infra-core_2.12" % "1.0-SNAPSHOT"
+libraryDependencies += "br.com.infra" % "infra-core_2.12" % "1.1-SNAPSHOT"
 
 // Testing libraries for dealing with CompletionStage...
 libraryDependencies += "org.assertj" % "assertj-core" % "3.6.2" % Test
