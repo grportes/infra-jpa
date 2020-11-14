@@ -1,7 +1,5 @@
 package infra.models.repo;
 
-import infra.BusinessException;
-
 import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
@@ -18,13 +16,13 @@ public interface Repository <T extends Serializable, ID> {
 
     void delete( T model );
 
-    void delete( ID id );
+    void deleteIfPresent( ID id );
 
-    int deletePorId( ID id );
+    int deleteById( ID id );
 
     Optional<T> findById(ID id );
 
-    T findByIdEx( ID id ) throws BusinessException;
+    T findByIdEx( ID id );
 
     List<T> findAll();
 

@@ -8,9 +8,7 @@ if [ -d target ]; then
 fi
 
 echo "Gerando artefatos..."
-./sbt clean
-./sbt reload
-./sbt compile
+./sbt clean reload compile
 ./sbt publishLocal
 
 echo "ok!!"

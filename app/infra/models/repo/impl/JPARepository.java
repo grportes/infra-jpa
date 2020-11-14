@@ -1,108 +1,87 @@
 package infra.models.repo.impl;
 
-import infra.BusinessException;
 import infra.Model;
+import infra.models.util.JPAUtil;
 import infra.models.repo.Repository;
-import org.hibernate.Query;
-import play.db.jpa.JPAApi;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceException;
 import javax.persistence.Tuple;
 import java.lang.reflect.ParameterizedType;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
 import static infra.UtilCollections.isVazia;
-import static infra.UtilString.isVazia;
 import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
-import static org.hibernate.transform.Transformers.aliasToBean;
+import static org.apache.commons.collections4.CollectionUtils.emptyIfNull;
 
 public abstract class JPARepository<T extends Model, ID> implements Repository<T,ID> {
 
-    private Class<T> modelClass;
+    private final Class<T> modelClass;
 
     @Inject
-    private JPAApi jpaApi;
+    private JPAUtil jpaUtil;
 
     @SuppressWarnings("unchecked")
     public JPARepository() {
-
         ParameterizedType pt = (ParameterizedType) getClass().getGenericSuperclass();
         this.modelClass = (Class) pt.getActualTypeArguments()[0];
     }
 
     protected EntityManager getEm() {
-
-        return this.jpaApi.em();
+        return this.jpaUtil.getEm();
     }
 
     /**
-     * JPA : persist
+     *  {@inheritDoc}
      */
     @Override
     public void save( T model ) {
-
-        try {
-            beforeSave( model );
-            getEm().persist( model );
-            postSave( model );
-        } catch ( BusinessException e ) {
-            throw new PersistenceException( e );
-        }
+        beforeSave( model );
+        getEm().persist( model );
+        postSave( model );
     }
 
     /**
-     * JPA: antes de aplicar persist
-     *
-     * @param model
-     * @throws BusinessException
+     * {@inheritDoc}
      */
-    protected void beforeSave( T model ) throws BusinessException {
+    protected void beforeSave( T model ) {
 
     }
 
     /**
-     * JPA: após de aplicar persist
-     *
-     * @param model
-     * @throws BusinessException
+     * {@inheritDoc}
      */
-    protected void postSave( T model ) throws BusinessException {
+    protected void postSave( T model ) {
 
     }
 
     /**
-     * Persiste lista de objetos
-     *
-     * @param models
+     * {@inheritDoc}
      */
     @Override
     public void saveAll( List<T> models ) {
-
-        if ( isVazia( models ) )
-            return;
-
+        if ( isVazia( models ) ) return;
         models.forEach( this::save );
     }
 
     /**
-     * Persiste lista de objetos
-     *
-     * @param models
+     * {@inheritDoc}
      */
     @Override
-    public void saveAll( List<T> models,
-                         boolean executeListener ) {
-
-        if ( isVazia( models ) )
-            return;
-
+    public void saveAll(
+        final List<T> models,
+        boolean executeListener
+    ) {
+        if ( isVazia( models ) ) return;
         if ( executeListener )
             saveAll( models );
         else
@@ -111,29 +90,26 @@ public abstract class JPARepository<T extends Model, ID> implements Repository<T
 
 
     /**
-     * JPA : merge
+     * {@inheritDoc}
      */
     @Override
     public T update( T model ) {
-
         return getEm().merge( model );
     }
 
     /**
-     * JPA : remove
+     * {@inheritDoc}
      */
     @Override
     public void delete( T model ) {
-
         getEm().remove( model );
     }
 
     /**
-     * JPA : remove
+     * {@inheritDoc}
      */
     @Override
-    public void delete( ID id ) {
-
+    public void deleteIfPresent( ID id ) {
         findById( id ).ifPresent( this::delete );
     }
 
@@ -141,8 +117,7 @@ public abstract class JPARepository<T extends Model, ID> implements Repository<T
      * {@inheritDoc}
      */
     @Override
-    public int deletePorId( ID id ) {
-
+    public int deleteById( ID id ) {
         return getEm()
                 .createQuery( format( "delete from %s where id = :id ", modelClass ) )
                 .setParameter( "id", id )
@@ -150,78 +125,57 @@ public abstract class JPARepository<T extends Model, ID> implements Repository<T
     }
 
     /**
-     * Pesquisa pelo ID.
-     *
-     * @param id
-     *
-     * @return
+     * {@inheritDoc}
      */
     @Override
-    public Optional<T> findById(ID id ) {
-
+    public Optional<T> findById( final ID id ) {
         return ofNullable( getEm().find( modelClass, id ) );
     }
 
     /**
-     * Pesquisa pelo ID. Caso não localize registro lança Business
-     *
-     * @param id
-     *
-     * @return
-     * @throws BusinessException
+     * {@inheritDoc}
      */
     @Override
-    public T findByIdEx( ID id ) throws BusinessException {
-
-        return findById( id )
-                .orElseThrow( () -> new BusinessException( format( "[ %s ] Não localizou registro ID: %s", modelClass.getSimpleName(), id ) ) );
+    public T findByIdEx( final ID id ) {
+        return findById( id ).orElseThrow( () -> new PersistenceException( format(
+            "[ %s ] Não localizou registro ID: %s", modelClass.getSimpleName(), id )
+        ));
     }
 
     /**
-     * Pesquisa todos.
-     *
-     * @return
+     * {@inheritDoc}
      */
     @Override
     public List<T> findAll() {
-
         return getEm().createQuery( format( "from %s", modelClass.getSimpleName() ), modelClass ).getResultList();
     }
 
     /**
-     * Exclui todos.
-     *
-     * @param models
+     * {@inheritDoc}
      */
     @Override
     public void deleteAll( List<T> models ) {
-
-        if ( isVazia( models ) )
-            return;
-
+        if ( isVazia( models ) ) return;
         models.forEach( this::delete );
     }
 
     /**
-     * Exclui todos
-     *
-     * @return Qtde de registros excluidos
+     * {@inheritDoc}
      */
     @Override
     public int deleteAll() {
-
         return getEm().createQuery( format( "delete %s bean", modelClass.getSimpleName() ) ).executeUpdate();
     }
-
 
     /**
      * Retorna data atual do banco.
      *
      * @return Data com hora, minuto e segundos.
      */
-    protected Date getHoje() {
-
-        return (Date) getEm().createNativeQuery( "select getdate()" ).getSingleResult();
+    protected LocalDateTime getHoje() {
+        return requireNonNull(
+            getEm().createNamedQuery("select current_timestamp()", Timestamp.class).getSingleResult()
+        ).toLocalDateTime();
     }
 
     /**
@@ -229,37 +183,8 @@ public abstract class JPARepository<T extends Model, ID> implements Repository<T
      *
      * @return Data sem hora/minuto.
      */
-    protected Date getHojeSemHora() {
-
-        return (Date) getEm().createNativeQuery( "select convert(date,getdate())" ).getSingleResult();
-    }
-
-//    protected StatelessSession getStatelessSession() {
-//
-//        return ( (Session) getEm().unwrap( HibernateEntityManager.class ).getDelegate() ).getSessionFactory().getCurrentSession().getSessionFactory().openStatelessSession();
-//    }
-//
-    /**
-     * Create an instance of Query for executing a named query.
-     *
-     * @param namedQuery    the name of a query defined in metadata
-     * @param clazz         the class of the object to be returned
-     *
-     * @return  the new query instance
-     */
-    protected Query createNamedQueryResultTrans(final String namedQuery,
-                                                final Class<?> clazz ) {
-
-        if ( isVazia( namedQuery ) )
-            throw new IllegalArgumentException( "É necessário informar [ namedQuery ]" );
-
-        if ( clazz == null )
-            throw new IllegalArgumentException( "É necessário informar [ clazz ]" );
-
-        return getEm()
-            .createNamedQuery( namedQuery )
-            .unwrap( Query.class )
-            .setResultTransformer( aliasToBean( clazz ) );
+    protected LocalDate getHojeHora() {
+        return getHoje().toLocalDate();
     }
 
     /**
@@ -277,9 +202,8 @@ public abstract class JPARepository<T extends Model, ID> implements Repository<T
      * @return Lista de dados.
      */
     protected List<Long> toListLong( final List<Tuple> lista ) {
-
         return  Arrays
-            .stream( lista.toArray() )
+            .stream( emptyIfNull(lista).toArray() )
             .mapToLong( value -> ((Number) value).longValue() )
             .boxed()
             .collect( toList() );
